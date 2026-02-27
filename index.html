@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日々の言葉カード</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Tailwind カスタム設定 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['"Shippori Mincho"', 'serif'],
+            sans: ['"Zen Kaku Gothic New"', 'sans-serif'],
+          },
+          colors: {
+            paper: {
+              DEFAULT: '#fbf9f6',
+              dark: '#f0ece3',
+            },
+            ink: {
+              DEFAULT: '#2a2825',
+              light: '#5c5853',
+              muted: '#9a948b'
+            },
+            accent: '#8f7d6d'
+          },
+          boxShadow: {
+            'card': '0 20px 40px -10px rgba(0,0,0,0.03), 0 1px 3px rgba(0,0,0,0.02)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .fade-transition {
+      transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    body {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.015'/%3E%3C/svg%3E");
+    }
+
+    ::selection {
+      background-color: #e6e1d8;
+      color: #2a2825;
+    }
+
+    /* 目次のスクロールバーを控えめに */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #e6e1d8;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-paper flex flex-col items-center justify-center p-4 md:p-8 font-sans text-ink">
+
+  <!-- BGM用オーディオ -->
+  <audio id="bgm-player" loop preload="none">
+    <source src="bgm.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- タイトル -->
+  <div class="w-full max-w-lg text-center mb-4">
+    <h1 class="text-ink-muted text-sm font-serif tracking-[0.3em] uppercase">WORDS</h1>
+  </div>
+
+  <!-- ヘッダーアクション -->
+  <div class="w-full max-w-lg flex justify-between items-center mb-6 px-2">
+    <!-- 左端：目次 -->
+    <div class="flex justify-start">
+      <button id="btn-list" class="flex items-center gap-1.5 text-ink-muted hover:text-ink transition-all duration-300 focus:outline-none group">
+        <i data-lucide="list" class="w-4 h-4"></i>
+        <span class="text-sm font-medium tracking-wide">目次</span>
+      </button>
+    </div>
+    
+    <!-- 右端：コントロール群 -->
+    <div class="flex justify-end items-center gap-4 sm:gap-5">
+      <button id="btn-edit" class="text-ink-muted hover:text-ink transition-colors duration-300 focus:outline-none" title="編集">
+        <i data-lucide="pen-line" class="w-4 h-4"></i>
+      </button>
+      <button id="btn-add" class="text-ink-muted hover:text-ink transition-all duration-300 focus:outline-none group" title="綴る">
+        <i data-lucide="plus" class="w-4 h-4 transition-transform group-hover:rotate-90"></i>
+      </button>
+      <button id="btn-bgm" class="text-ink-muted/50 hover:text-ink transition-colors duration-300 focus:outline-none" title="BGMのオン・オフ">
+        <i data-lucide="volume-x" class="w-4 h-4 block" id="bgm-icon-off"></i>
+        <i data-lucide="volume-2" class="w-4 h-4 hidden" id="bgm-icon-on"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- メインカード -->
+  <div id="main-card" class="w-full max-w-lg bg-white/80 backdrop-blur-sm rounded-3xl shadow-card p-8 md:p-12 min-h-[400px] flex flex-col justify-center relative select-none overflow-hidden border border-white/50 transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)]">
+    
+    <div class="absolute -top-10 -left-10 w-40 h-40 bg-paper-dark/30 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-paper-dark/30 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- 閲覧モード -->
+    <div id="view-mode" class="contents">
+      <!-- 装飾の引用符（全体用） -->
+      <div class="absolute top-8 left-6 text-paper-dark text-8xl font-serif leading-none opacity-50 select-none hidden md:block">“</div>
+
+      <div class="relative z-10 w-full flex-1 flex flex-col items-center justify-center py-2">
+        <!-- 挿絵領域（4:3固定） -->
+        <div id="image-container" class="w-full aspect-[4/3] rounded-xl overflow-hidden bg-paper-dark/30 shadow-inner mb-8 transition-opacity duration-600 hidden">
+          <img id="image-display" src="" class="w-full h-full object-cover fade-transition opacity-100" alt="挿絵" onerror="this.parentElement.style.display='none'">
+        </div>
+        
+        <div class="relative w-full">
+          <div class="absolute -top-6 -left-2 text-paper-dark text-6xl font-serif leading-none opacity-50 select-none md:hidden">“</div>
+          <p id="text-display" class="text-xl md:text-2xl leading-[1.8] text-center font-serif tracking-wider fade-transition opacity-100 text-ink" style="word-break: auto-phrase; font-feature-settings: 'palt' 1;"></p>
+          <div class="absolute -bottom-6 -right-2 text-paper-dark text-6xl font-serif leading-none rotate-180 opacity-50 select-none md:hidden">“</div>
+        </div>
+      </div>
+
+      <div class="absolute bottom-6 right-6 text-paper-dark text-8xl font-serif leading-none rotate-180 opacity-50 select-none hidden md:block">“</div>
+    </div>
+
+    <!-- 編集モード -->
+    <div id="edit-mode" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md p-8 md:p-12 flex-col h-full w-full z-30 gap-6">
+      <div class="flex-1 flex flex-col">
+        <label for="text-input" class="text-xs font-serif text-ink-muted tracking-widest mb-3 uppercase">言葉を刻む</label>
+        <textarea id="text-input" class="w-full flex-1 bg-transparent border-none focus:outline-none focus:ring-0 resize-none text-xl md:text-2xl leading-[1.8] font-serif tracking-wider text-ink placeholder-ink-muted/30" placeholder="心の奥にある言葉を..."></textarea>
+      </div>
+      
+      <div class="flex justify-between items-center pt-4 border-t border-paper-dark/50">
+        <button id="btn-delete" class="text-ink-muted hover:text-red-400 p-2 transition-colors focus:outline-none rounded-full hover:bg-red-50" title="削除">
+          <i data-lucide="trash-2" class="w-5 h-5"></i>
+        </button>
+        <div id="delete-spacer" class="w-9 h-9 hidden"></div>
+        <div class="flex gap-4">
+          <button id="btn-cancel" class="px-5 py-2 text-sm text-ink-light hover:text-ink transition-colors focus:outline-none font-medium tracking-wide">
+            やめる
+          </button>
+          <button id="btn-save" class="px-6 py-2 text-sm bg-ink text-white rounded-full hover:bg-ink-light transition-colors focus:outline-none shadow-sm font-medium tracking-wide">
+            保存する
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- コントロール部 -->
+  <div class="w-full max-w-lg mt-8 flex flex-col items-center gap-6 relative z-10">
+    <div id="counter-display" class="text-xs font-serif text-ink-muted tracking-[0.2em]"></div>
+
+    <div class="flex items-center justify-center gap-6 md:gap-12 w-full">
+      <button id="btn-prev" class="p-4 rounded-full text-ink-light hover:text-ink hover:bg-white/50 active:scale-95 transition-all duration-300 focus:outline-none" aria-label="前の言葉">
+        <i data-lucide="arrow-left" class="w-5 h-5 md:w-6 md:h-6 stroke-[1.5]"></i>
+      </button>
+
+      <button id="btn-random" class="p-4 rounded-full text-ink-light hover:text-ink hover:bg-white/50 active:scale-95 transition-all duration-300 focus:outline-none group" title="偶然の出会い">
+        <i data-lucide="sparkles" class="w-5 h-5 md:w-6 md:h-6 stroke-[1.5] group-hover:rotate-12 transition-transform"></i>
+      </button>
+
+      <button id="btn-next" class="p-4 rounded-full text-ink-light hover:text-ink hover:bg-white/50 active:scale-95 transition-all duration-300 focus:outline-none" aria-label="次の言葉">
+        <i data-lucide="arrow-right" class="w-5 h-5 md:w-6 md:h-6 stroke-[1.5]"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- 目次（リスト）モード（全画面） -->
+  <div id="list-mode" class="hidden fixed inset-0 bg-paper/95 backdrop-blur-md z-50 flex-col overflow-hidden">
+    <div class="w-full max-w-lg mx-auto flex-1 flex flex-col h-full p-6 md:p-8 pt-10 md:pt-14">
+      <div class="flex justify-between items-center mb-8 shrink-0 px-2">
+        <h2 class="text-xs font-serif text-ink-muted tracking-widest uppercase">目次</h2>
+        <button id="btn-close-list" class="text-ink-muted/50 hover:text-ink-light p-2 transition-colors duration-300 focus:outline-none rounded-full hover:bg-paper-dark/50">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+      </div>
+      <div id="list-container" class="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+        <!-- JSでリスト項目を生成 -->
+      </div>
+      
+      <!-- データ管理（Export / Import） -->
+      <div class="mt-4 pt-4 border-t border-paper-dark/50 flex justify-end gap-6 shrink-0 px-2 pb-6 md:pb-8">
+        <button id="btn-export" class="flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors focus:outline-none">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="font-serif tracking-wide">書き出し</span>
+        </button>
+        <button id="btn-import" class="flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink transition-colors focus:outline-none">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span class="font-serif tracking-wide">読み込み</span>
+        </button>
+        <input type="file" id="import-input" accept=".json" class="hidden">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const STORAGE_KEY = 'daily_word_cards_v3'; // 画像パス変更のため更新
+    
+    // デフォルトの言葉リスト
+    const defaultSentences = [
+      "小さなことにいちいち過剰反応しない",
+      "嫌な出来事は何かを気づかせるメッセージ",
+      "カッとなったら怒っている自分を想像してみる",
+      "苦手な相手とは心の中で一線を引く",
+      "他人の評価ではなく、自分の感覚で人とつきあう",
+      "姑や上司に悩んだら、まずは「徳を積む」",
+      "人間関係は家族を大切にすると改善する",
+      "不安は現実になる。笑えない未来はイメージしない。",
+      "周りの幸せを妬むと、自分の幸せが遠ざかる",
+      "逆境はチャンス",
+      "待つ",
+      "無理に決めない",
+      "genuine: 正真正銘の、本物の、正にその名に値する、心からの、本当の、偽りのない、純粋の、純粋な",
+      "しんどい時、つらい時こそ前を向く、下を向かない",
+      "喜びは素直に表現",
+      "人の話をきちんと聞く",
+      "ほめ上手",
+      "好きな人を束縛しない（お互いに信頼しあう）",
+      "意外とミーハー（適度に流行や情報を取り入れ、話題が豊富）",
+      "自分をしっかり持ちつつ、相手に合わせることができる",
+      "キレそうな時ほど、感情的にならない",
+      "「静かに怒る」",
+      "一日一日を大切に生きる",
+      "規則正しい生活の中で、余裕ができると周りにも目を向けられる",
+      "再びは通らぬ尊き道を今歩いている",
+      "人生は後戻りできない貴重な時間の積み重ね",
+      "慎重に進むも、大胆に進むもすべて自分の為し得た足跡"
+    ];
+
+    // デフォルトデータの生成（テキストと画像を紐付ける）
+    const defaultData = defaultSentences.map((text, i) => ({
+      text: text,
+      image: `./image/${String(i + 1).padStart(2, '0')}.png`
+    }));
+
+    function loadSentences() {
+      try {
+        // 古いバージョンからの移行を考慮
+        const v1Raw = localStorage.getItem('daily_word_cards_v1');
+        const v2Raw = localStorage.getItem('daily_word_cards_v2');
+        const raw = localStorage.getItem(STORAGE_KEY);
+        
+        let parsed = null;
+        if (raw) {
+          parsed = JSON.parse(raw);
+        } else if (v2Raw) {
+          parsed = JSON.parse(v2Raw);
+          // v2からv3への移行時、デフォルトの言葉の画像パスを上書き
+          if (Array.isArray(parsed)) {
+            parsed = parsed.map(item => {
+              const idx = defaultSentences.indexOf(item?.text);
+              if (idx !== -1) {
+                item.image = `./image/${String(idx + 1).padStart(2, '0')}.png`;
+              }
+              return item;
+            });
+          }
+        } else if (v1Raw) {
+          parsed = JSON.parse(v1Raw);
+        }
+
+        if (!Array.isArray(parsed)) return JSON.parse(JSON.stringify(defaultData));
+        
+        // オブジェクトの配列に正規化
+        return parsed.map((item) => {
+          if (typeof item === 'string') {
+            const idx = defaultSentences.indexOf(item);
+            const image = idx !== -1 ? `./image/${String(idx + 1).padStart(2, '0')}.png` : null;
+            return { text: item.trim(), image };
+          }
+          return item;
+        }).filter(item => item && item.text);
+      } catch {
+        return JSON.parse(JSON.stringify(defaultData));
+      }
+    }
+
+    function saveSentences() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sentencesList));
+    }
+
+    let sentencesList = loadSentences();
+    if (sentencesList.length === 0) {
+      sentencesList = JSON.parse(JSON.stringify(defaultData));
+      saveSentences();
+    }
+
+    let currentIndex = 0;
+    let mode = 'view';
+    let isAnimating = false;
+    let isBgmPlaying = false;
+
+    const els = {
+      viewMode: document.getElementById('view-mode'),
+      editMode: document.getElementById('edit-mode'),
+      listMode: document.getElementById('list-mode'),
+      listContainer: document.getElementById('list-container'),
+      textDisplay: document.getElementById('text-display'),
+      imageContainer: document.getElementById('image-container'),
+      imageDisplay: document.getElementById('image-display'),
+      textInput: document.getElementById('text-input'),
+      counterDisplay: document.getElementById('counter-display'),
+      btnDelete: document.getElementById('btn-delete'),
+      deleteSpacer: document.getElementById('delete-spacer'),
+      card: document.getElementById('main-card'),
+      btnNext: document.getElementById('btn-next'),
+      btnPrev: document.getElementById('btn-prev'),
+      btnBgm: document.getElementById('btn-bgm'),
+      bgmIconOff: document.getElementById('bgm-icon-off'),
+      bgmIconOn: document.getElementById('bgm-icon-on'),
+      bgmPlayer: document.getElementById('bgm-player')
+    };
+
+    function updateUI() {
+      if (mode === 'view') {
+        els.viewMode.classList.remove('hidden');
+        els.viewMode.classList.add('contents');
+        els.editMode.classList.add('hidden');
+        els.editMode.classList.remove('flex');
+        els.listMode.classList.add('hidden');
+        els.listMode.classList.remove('flex');
+
+        if (sentencesList.length > 0) {
+          const currentData = sentencesList[currentIndex];
+          els.textDisplay.textContent = currentData.text;
+          
+          if (currentData.image) {
+            els.imageDisplay.src = currentData.image;
+            els.imageContainer.style.display = 'block';
+          } else {
+            els.imageDisplay.src = '';
+            els.imageContainer.style.display = 'none';
+          }
+
+          const currentStr = String(currentIndex + 1).padStart(2, '0');
+          const totalStr = String(sentencesList.length).padStart(2, '0');
+          els.counterDisplay.innerHTML = `${currentStr} <span class="mx-2 text-ink-muted/30">|</span> ${totalStr}`;
+        } else {
+          els.textDisplay.textContent = "言葉がありません";
+          els.imageContainer.style.display = 'none';
+          els.counterDisplay.innerHTML = `00 <span class="mx-2 text-ink-muted/30">|</span> 00`;
+        }
+      } 
+      else if (mode === 'add' || mode === 'edit') {
+        els.viewMode.classList.add('hidden');
+        els.viewMode.classList.remove('contents');
+        els.listMode.classList.add('hidden');
+        els.listMode.classList.remove('flex');
+        els.editMode.classList.remove('hidden');
+        els.editMode.classList.add('flex');
+
+        if (mode === 'add') {
+          els.textInput.value = '';
+          els.btnDelete.classList.add('hidden');
+          els.deleteSpacer.classList.remove('hidden');
+        } else if (mode === 'edit') {
+          els.textInput.value = sentencesList[currentIndex]?.text || '';
+          els.btnDelete.classList.remove('hidden');
+          els.deleteSpacer.classList.add('hidden');
+        }
+        setTimeout(() => els.textInput.focus(), 50);
+      }
+      else if (mode === 'list') {
+        els.viewMode.classList.add('hidden');
+        els.viewMode.classList.remove('contents');
+        els.editMode.classList.add('hidden');
+        els.editMode.classList.remove('flex');
+        els.listMode.classList.remove('hidden');
+        els.listMode.classList.add('flex');
+        
+        renderList();
+      }
+    }
+
+    function renderList() {
+      els.listContainer.innerHTML = '';
+      sentencesList.forEach((data, index) => {
+        const btn = document.createElement('button');
+        btn.className = `w-full text-left p-3 rounded-xl transition-colors flex gap-3 items-baseline group ${index === currentIndex ? 'bg-paper text-ink font-medium' : 'hover:bg-paper/50 text-ink-light'}`;
+        
+        const numSpan = document.createElement('span');
+        numSpan.className = 'text-xs font-serif opacity-50 w-6 shrink-0';
+        numSpan.textContent = String(index + 1).padStart(2, '0');
+        
+        const textSpan = document.createElement('span');
+        textSpan.className = 'font-serif truncate group-hover:text-ink transition-colors';
+        textSpan.textContent = data.text;
+        
+        btn.appendChild(numSpan);
+        btn.appendChild(textSpan);
+        
+        btn.addEventListener('click', () => {
+          if (currentIndex !== index) {
+            changeSentence(index);
+          } else {
+            mode = 'view';
+            updateUI();
+          }
+        });
+        
+        els.listContainer.appendChild(btn);
+      });
+      
+      setTimeout(() => {
+        const activeItem = els.listContainer.children[currentIndex];
+        if (activeItem) {
+          activeItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }, 50);
+    }
+
+    window.changeSentence = function(newIndex) {
+      if (isAnimating || sentencesList.length === 0) return;
+      isAnimating = true;
+      
+      const wasListMode = mode === 'list';
+      mode = 'view';
+
+      if (!wasListMode) {
+        els.textDisplay.style.opacity = '0';
+        els.textDisplay.style.transform = 'translateY(4px)';
+        els.imageDisplay.style.opacity = '0';
+        
+        setTimeout(() => {
+          currentIndex = newIndex;
+          updateUI();
+          
+          els.textDisplay.style.transition = 'none';
+          els.textDisplay.style.transform = 'translateY(-4px)';
+          els.imageDisplay.style.transition = 'none';
+          void els.textDisplay.offsetWidth;
+          
+          els.textDisplay.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+          els.textDisplay.style.opacity = '1';
+          els.textDisplay.style.transform = 'translateY(0)';
+
+          els.imageDisplay.style.transition = 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+          els.imageDisplay.style.opacity = '1';
+
+          setTimeout(() => { isAnimating = false; }, 600);
+        }, 300);
+      } else {
+        currentIndex = newIndex;
+        updateUI();
+        isAnimating = false;
+      }
+    };
+
+    els.btnNext.addEventListener('click', () => {
+      if (sentencesList.length === 0 || mode !== 'view') return;
+      changeSentence(currentIndex === sentencesList.length - 1 ? 0 : currentIndex + 1);
+    });
+
+    els.btnPrev.addEventListener('click', () => {
+      if (sentencesList.length === 0 || mode !== 'view') return;
+      changeSentence(currentIndex === 0 ? sentencesList.length - 1 : currentIndex - 1);
+    });
+
+    document.getElementById('btn-random').addEventListener('click', () => {
+      if (sentencesList.length <= 1 || mode !== 'view') return;
+      let randomIndex;
+      do {
+        randomIndex = Math.floor(Math.random() * sentencesList.length);
+      } while (randomIndex === currentIndex);
+      changeSentence(randomIndex);
+    });
+
+    document.getElementById('btn-add').addEventListener('click', () => {
+      mode = 'add';
+      updateUI();
+    });
+
+    document.getElementById('btn-list').addEventListener('click', () => {
+      mode = 'list';
+      updateUI();
+    });
+
+    document.getElementById('btn-close-list').addEventListener('click', () => {
+      mode = 'view';
+      updateUI();
+    });
+
+    document.getElementById('btn-edit').addEventListener('click', () => {
+      if (sentencesList.length === 0) return;
+      mode = 'edit';
+      updateUI();
+    });
+
+    document.getElementById('btn-cancel').addEventListener('click', () => {
+      mode = 'view';
+      updateUI();
+    });
+
+    document.getElementById('btn-save').addEventListener('click', () => {
+      const text = els.textInput.value.trim();
+      if (!text) return;
+
+      if (mode === 'add') {
+        // 追加された言葉には画像を紐付けない
+        sentencesList.push({ text: text, image: null });
+        currentIndex = sentencesList.length - 1;
+      } else if (mode === 'edit') {
+        sentencesList[currentIndex].text = text;
+      }
+      saveSentences();
+      mode = 'view';
+      updateUI();
+    });
+
+    document.getElementById('btn-delete').addEventListener('click', () => {
+      if (sentencesList.length <= 1) return;
+      if(!confirm('この言葉を削除しますか？')) return;
+      
+      sentencesList.splice(currentIndex, 1);
+      if (currentIndex >= sentencesList.length) {
+        currentIndex = sentencesList.length - 1;
+      }
+      saveSentences();
+      mode = 'view';
+      updateUI();
+    });
+
+    // データのエクスポート
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const dataStr = JSON.stringify(sentencesList, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      const now = new Date();
+      const dateStr = now.toISOString().replace(/[:\-T]/g, '').slice(0, 14);
+      a.download = `words_backup_${dateStr}.json`;
+      
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // データのインポート
+    const importInput = document.getElementById('import-input');
+    document.getElementById('btn-import').addEventListener('click', () => {
+      importInput.click();
+    });
+
+    importInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed)) {
+            const validData = parsed.filter(item => item && typeof item.text === 'string');
+            if (validData.length > 0) {
+              if (confirm('今の言葉をすべて上書きして読み込むけど、ええかね？')) {
+                sentencesList = validData;
+                saveSentences();
+                currentIndex = 0;
+                renderList();
+              }
+            } else {
+              alert('有効なデータが見つからんかったよ。');
+            }
+          } else {
+            alert('ファイルの形式が違うみたいじゃね。');
+          }
+        } catch (err) {
+          alert('ファイルの読み込みに失敗したよ。');
+          console.error(err);
+        }
+        importInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+
+    els.btnBgm.addEventListener('click', () => {
+      if (isBgmPlaying) {
+        els.bgmPlayer.pause();
+        isBgmPlaying = false;
+        els.bgmIconOff.classList.remove('hidden');
+        els.bgmIconOn.classList.add('hidden');
+      } else {
+        els.bgmPlayer.play().then(() => {
+          isBgmPlaying = true;
+          els.bgmIconOff.classList.add('hidden');
+          els.bgmIconOn.classList.remove('hidden');
+        }).catch(err => {
+          console.error("BGM再生エラー:", err);
+        });
+      }
+    });
+
+    let touchStart = null;
+    let touchEnd = null;
+    const minSwipeDistance = 50;
+
+    // 画面全体でスワイプを検知
+    document.addEventListener('touchstart', (e) => {
+      if (mode !== 'view') return;
+      touchEnd = null;
+      touchStart = e.targetTouches[0].clientX;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+      if (mode !== 'view') return;
+      touchEnd = e.targetTouches[0].clientX;
+    }, { passive: true });
+
+    document.addEventListener('touchend', () => {
+      if (mode !== 'view' || !touchStart || !touchEnd) return;
+      const distance = touchStart - touchEnd;
+
+      if (distance > minSwipeDistance) {
+        els.btnNext.click();
+      } else if (distance < -minSwipeDistance) {
+        els.btnPrev.click();
+      }
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (mode !== 'view') return;
+      if (e.key === 'ArrowRight') els.btnNext.click();
+      if (e.key === 'ArrowLeft') els.btnPrev.click();
+      if (e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('btn-random').click();
+      }
+    });
+
+    updateUI();
+  </script>
+</body>
+</html>
