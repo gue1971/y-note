@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日々の言葉カード</title>
+  <title>ことば</title>
+  
+  <!-- PWA関連設定 -->
+  <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoi44GT44Go44GwIiwic2hvcnRfbmFtZSI6IuOBk+OBqOOBsCIsInN0YXJ0X3VybCI6Ii4vaW5kZXguaHRtbCIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiNmYmY5ZjYiLCJ0aGVtZV9jb2xvciI6IiNmYmY5ZjYiLCJpY29ucyI6W3sic3JjIjoiLi9pY29uLnBuZyIsInNpemVzIjoiMTkyeDE5MiA1MTJ4NTEyIiwidHlwZSI6ImltYWdlL3BuZyIsInB1cnBvc2UiOiJhbnkgbWFza2FibGUifV19">
+  <meta name="theme-color" content="#fbf9f6">
+  <link rel="apple-touch-icon" href="./icon.png">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -78,7 +83,7 @@
 
   <!-- タイトル -->
   <div class="w-full max-w-lg text-center mb-4">
-    <h1 class="text-ink-muted text-sm font-serif tracking-[0.3em] uppercase">WORDS</h1>
+    <h1 class="text-ink-muted text-sm font-serif tracking-[0.3em]">ことば</h1>
   </div>
 
   <!-- ヘッダーアクション -->
@@ -207,7 +212,17 @@
   <script>
     lucide.createIcons();
 
-    const STORAGE_KEY = 'daily_word_cards_v3'; // 画像パス変更のため更新
+    // PWA用 Service Worker登録
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((err) => {
+          // CanvasなどSWが動かない環境用（実際のサーバー環境では同じ階層にsw.jsを置くと動きます）
+          console.log('Service Workerの登録をスキップしたよ。PWAとしてインストールするには、サーバー上に「sw.js」を置いてね。', err);
+        });
+      });
+    }
+
+    const STORAGE_KEY = 'daily_word_cards_v3';
     
     // デフォルトの言葉リスト
     const defaultSentences = [
